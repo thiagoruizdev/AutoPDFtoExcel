@@ -48,7 +48,13 @@ if pdf_file and xlsx_base:
     resultado = comparar_xlsx(output_excel, xlsx_base)
     
     st.write("📊 Resultado da comparação:")
+    if isinstance(resultado, pd.DataFrame) and not resultado.empty:
     st.dataframe(resultado)
+    # Exportar para Excel
+    resultado.to_excel("resultado.xlsx", index=False, engine='openpyxl')
+    st.download_button("📥 Baixar Relatório de Diferenças", data=open("resultado.xlsx", "rb"), file_name="relatorio_diferencas.xlsx")
+else:
+    st.warning("⚠️ Nenhuma diferença encontrada ou arquivos não possuem chaves comuns para comparação!")
 
     # Exportar para Excel
     resultado.to_excel("resultado.xlsx", index=False, engine='openpyxl')
