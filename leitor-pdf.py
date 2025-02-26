@@ -1,71 +1,78 @@
 import streamlit as st
 import pandas as pd
 import pdfplumber
-import os
+import openpyxl
 
-# Função para extrair texto do PDF e converter para Excel
-def extrair_dados_pdf(pdf_path, output_excel):
+# 🔹 Função para extrair os dados da carta bancária do PDF
+def extrair_dados_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
-        all_text = []
+        texto_extraido = []
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                all_text.append(text)
-
-    # Criando um DataFrame simples
-    df = pd.DataFrame({"Dados Extraídos": all_text})
-
-    # Exportando para Excel
-    df.to_excel(output_excel, index=False, engine='openpyxl')
-    return output_excel
-
-# Função para comparar os arquivos XLSX
-def comparar_xlsx(arquivo1, arquivo2):
-    df1 = pd.read_excel(arquivo1, engine='openpyxl')
-    df2 = pd.read_excel(arquivo2, engine='openpyxl')
-
-    # Identificando colunas comuns para comparação
-    colunas_comuns = list(set(df1.columns) & set(df2.columns))
+                texto_extraido.append(text.strip())  # Remove espaços extras
     
-    if not colunas_comuns:
-        return "Nenhuma chave comum encontrada para comparação!"
-    
-    # Fazendo a junção para comparação
-    df_comparacao = df1.merge(df2, on=colunas_comuns, how="outer", indicator=True)
+    # Criar um dicionário com os dados extraídos
+    dados_extraidos = {
+        "Customer name": "",
+        "Address": "",
+        "Type of change": "",
+        "Bank key": "",
+        "Swift Code": "",
+        "Account number": "",
+        "IBAN": "",
+        "Name of bank": ""
+    }
 
-    # Pegando apenas as diferenças
-    diferencas = df_comparacao[df_comparacao["_merge"] != "both"].drop(columns=["_merge"])
+    # Preenchendo os campos extraídos do texto
+    for campo in dados_extraidos.keys():
+        for linha in texto_extraido:
+            if campo in linha:
+                valor = linha.split("(*)")[-1].strip() if "(*)" in linha else linha.split(":")[-1].strip()
+                dados_extraidos[campo] = valor
+                break  # Para no primeiro match encontrado
 
-    return diferencas
+    return pd.DataFrame([dados_extraidos])
 
-# Interface do Streamlit
-st.title("📑 Comparador de Dados Bancários")
+# 🔹 Função para comparar com os dados do modelo (SAP)
+def comparar_dados(df_extraido, df_modelo):
+    df_resultado = df_modelo.copy()
 
-# Upload de arquivos
-pdf_file = st.file_uploader("📄 Faça upload do arquivo PDF com os dados", type=["pdf"])
-xlsx_base = st.file_uploader("📊 Faça upload do arquivo Excel base para comparação", type=["xlsx"])
+    for coluna in df_extraido.columns:
+        if coluna in df_modelo.columns:
+            df_resultado[coluna] = df_modelo[coluna] == df_extraido[coluna][0]
+            df_resultado[coluna] = df_resultado[coluna].map({True: "✅ Match", False: "❌ Não Bate"})
 
-if pdf_file and xlsx_base:
-    # Nome temporário para o Excel convertido
+    return df_resultado
+
+# 🔹 Interface do Streamlit
+st.title("📑 Comparação de Cartas Bancárias")
+
+# Upload do arquivo PDF e do modelo SAP
+pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
+xlsx_modelo = st.file_uploader("📊 Envie o modelo de referência (Excel)", type=["xlsx"])
+
+if pdf_file and xlsx_modelo:
+    # Nome do Excel convertido
     output_excel = "dados_extraidos.xlsx"
 
-    # Extraindo dados do PDF
-    extrair_dados_pdf(pdf_file, output_excel)
+    # Extrair os dados do PDF
+    df_extraido = extrair_dados_pdf(pdf_file)
 
-    # Comparando os arquivos XLSX
-    resultado = comparar_xlsx(output_excel, xlsx_base)
+    # Carregar o modelo SAP
+    df_modelo = pd.read_excel(xlsx_modelo, engine='openpyxl')
 
-    # Exibindo o resultado
-    st.write("📊 Resultado da comparação:")
+    # Comparar os dados
+    df_resultado = comparar_dados(df_extraido, df_modelo)
 
-    if isinstance(resultado, pd.DataFrame) and not resultado.empty:
-        st.dataframe(resultado)
-        
-        # Exportando para Excel
-        resultado.to_excel("resultado.xlsx", index=False, engine='openpyxl')
+    # Exibir resultado na tela
+    st.write("📊 Resultado da Comparação:")
+    st.dataframe(df_resultado)
 
-        # Botão de download do relatório
-        with open("resultado.xlsx", "rb") as file:
-            st.download_button("📥 Baixar Relatório de Diferenças", data=file, file_name="relatorio_diferencas.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    else:
-        st.warning("⚠️ Nenhuma diferença encontrada ou arquivos não possuem chaves comuns para comparação!")
+    # Exportar resultado para Excel
+    resultado_excel = "relatorio_diferencas.xlsx"
+    df_resultado.to_excel(resultado_excel, index=False, engine='openpyxl')
+
+    # Botão para baixar o relatório
+    with open(resultado_excel, "rb") as file:
+        st.download_button("📥 Baixar Relatório", data=file, file_name="relatorio_diferencas.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
