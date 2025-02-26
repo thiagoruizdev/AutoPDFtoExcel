@@ -56,25 +56,27 @@ st.title("📑 Comparador de Cartas Bancárias com IA")
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
 xlsx_modelo = st.file_uploader("📊 Envie o modelo de referência (Excel)", type=["xlsx"])
 
+# Criar um botão para rodar a IA apenas quando for clicado
 if pdf_file and xlsx_modelo:
-    # Extrair textos
-    texto_pdf = extrair_texto_pdf(pdf_file)
-    texto_excel = extrair_texto_excel(xlsx_modelo)
+    if st.button("🔍 Analisar"):
+        # Extrair textos
+        texto_pdf = extrair_texto_pdf(pdf_file)
+        texto_excel = extrair_texto_excel(xlsx_modelo)
 
-    # Chamar a IA para análise
-    resultado_ia = analisar_com_ia(texto_pdf, texto_excel)
+        # Chamar a IA para análise
+        resultado_ia = analisar_com_ia(texto_pdf, texto_excel)
 
-    # Melhorando a formatação do texto retornado
-    resultado_formatado = resultado_ia.replace("✅", "\n✅").replace("❌", "\n❌").replace("⚠️", "\n⚠️")
+        # Melhorando a formatação do texto retornado
+        resultado_formatado = resultado_ia.replace("✅", "\n✅").replace("❌", "\n❌").replace("⚠️", "\n⚠️")
 
-    # Exibir resultado de forma organizada
-    st.subheader("📊 Análise da IA:")
-    st.text_area("", resultado_formatado, height=400)
+        # Exibir resultado de forma organizada
+        st.subheader("📊 Análise da IA:")
+        st.text_area("", resultado_formatado, height=400)
 
-    # Salvar a análise em um arquivo
-    with open("analise_bancaria.txt", "w", encoding="utf-8") as file:
-        file.write(resultado_formatado)
+        # Salvar a análise em um arquivo
+        with open("analise_bancaria.txt", "w", encoding="utf-8") as file:
+            file.write(resultado_formatado)
 
-    # Botão para baixar o relatório
-    with open("analise_bancaria.txt", "rb") as file:
-        st.download_button("📥 Baixar Relatório", data=file, file_name="analise_bancaria.txt", mime="text/plain")
+        # Botão para baixar o relatório
+        with open("analise_bancaria.txt", "rb") as file:
+            st.download_button("📥 Baixar Relatório", data=file, file_name="analise_bancaria.txt", mime="text/plain")
