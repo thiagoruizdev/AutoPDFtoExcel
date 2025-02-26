@@ -2,90 +2,72 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import openpyxl
+from transformers import pipeline
 
-# 🔹 Função para extrair os dados do PDF
-def extrair_dados_pdf(pdf_path):
+# 🔹 Baixar um modelo open-source da Hugging Face
+modelo_ia = pipeline("text-generation", model="mistralai/Mistral-7B-Instruct-v0.1")
+
+# 🔹 Função para extrair texto do PDF
+def extrair_texto_pdf(pdf_path):
+    texto_extraido = []
     with pdfplumber.open(pdf_path) as pdf:
-        texto_extraido = []
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                texto_extraido.append(text.strip())  
+                texto_extraido.append(text.strip())
+    return "\n".join(texto_extraido)  
 
-    # Estrutura do dicionário de dados extraídos
-    dados_extraidos = {
-        "Customer name": "",
-        "Address": "",
-        "Type of change": "",
-        "Bank key": "",
-        "Swift Code": "",
-        "Account number": "",
-        "IBAN": "",
-        "Name of bank": ""
-    }
+# 🔹 Função para extrair dados do Excel
+def extrair_texto_excel(excel_path):
+    df = pd.read_excel(excel_path, engine="openpyxl")
+    return df.to_string(index=False)  
 
-    # Preenchendo os campos extraídos
-    for campo in dados_extraidos.keys():
-        for linha in texto_extraido:
-            if campo in linha:
-                valor = linha.split(":")[-1].strip() if ":" in linha else linha.split("(*)")[-1].strip()
-                dados_extraidos[campo] = valor
-                break  
+# 🔹 Função para a IA analisar os arquivos
+def analisar_com_ia(texto_pdf, texto_excel):
+    prompt = f"""
+    Você é um analista bancário responsável por verificar documentos de clientes. 
+    Compare as informações extraídas de um contrato bancário (PDF) com os dados cadastrados no sistema (Excel).
+    
+    Identifique:
+    - ✅ Informações que batem (iguais nos dois documentos)
+    - ❌ Informações divergentes (dados diferentes entre os documentos)
+    - ⚠️ Informações que faltam (estão no Excel mas não no PDF)
 
-    return pd.DataFrame([dados_extraidos])
+    **📄 Conteúdo do PDF extraído:**
+    {texto_pdf}
 
-# 🔹 Função para comparar os dados e usar IA para análise
-def comparar_dados_ia(df_extraido, df_modelo):
-    df_resultado = pd.DataFrame(columns=["Campo", "Valor no Excel", "Valor no PDF", "Status"])
+    **📊 Conteúdo do Excel extraído:**
+    {texto_excel}
 
-    for coluna in df_modelo.columns:
-        valor_excel = str(df_modelo[coluna].values[0]) if coluna in df_modelo.columns else "N/A"
-        valor_pdf = str(df_extraido[coluna].values[0]) if coluna in df_extraido.columns else "N/A"
+    Gere uma análise clara e objetiva, como um relatório bancário.
+    """
 
-        # Classificação Inteligente (IA)
-        if valor_excel == valor_pdf:
-            status = "✅ Match"
-        elif valor_pdf == "" or valor_pdf == "N/A":
-            status = "⚠️ Faltando"
-        else:
-            status = "❌ Divergente"
+    resposta = modelo_ia(prompt, max_length=500, do_sample=True)
+    return resposta[0]["generated_text"]
 
-        df_resultado = pd.concat([df_resultado, pd.DataFrame([{
-            "Campo": coluna,
-            "Valor no Excel": valor_excel,
-            "Valor no PDF": valor_pdf,
-            "Status": status
-        }])], ignore_index=True)
+# 🔹 Interface do Streamlit
+st.title("📑 Comparador de Cartas Bancárias com IA (Gratuita)")
 
-    return df_resultado
-
-# 🔹 Interface no Streamlit
-st.title("📑 Comparação de Cartas Bancárias com IA")
-
-# Upload do PDF e do Excel de referência
+# Upload do PDF e do Excel
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
 xlsx_modelo = st.file_uploader("📊 Envie o modelo de referência (Excel)", type=["xlsx"])
 
 if pdf_file and xlsx_modelo:
-    output_excel = "dados_extraidos.xlsx"
+    # Extrair texto dos arquivos
+    texto_pdf = extrair_texto_pdf(pdf_file)
+    texto_excel = extrair_texto_excel(xlsx_modelo)
 
-    # Extrair os dados do PDF
-    df_extraido = extrair_dados_pdf(pdf_file)
+    # Chamar a IA para análise
+    resultado_ia = analisar_com_ia(texto_pdf, texto_excel)
 
-    # Carregar os dados do Excel
-    df_modelo = pd.read_excel(xlsx_modelo, engine='openpyxl')
+    # Exibir resultado
+    st.write("📊 **Análise da IA:**")
+    st.text_area("", resultado_ia, height=400)
 
-    # Comparar os dados e aplicar IA
-    df_resultado = comparar_dados_ia(df_extraido, df_modelo)
+    # Exportar análise para arquivo
+    with open("analise_bancaria.txt", "w", encoding="utf-8") as file:
+        file.write(resultado_ia)
 
-    # Exibir os resultados
-    st.write("📊 Resultado da Comparação com IA:")
-    st.dataframe(df_resultado)
-
-    # Exportar para Excel
-    resultado_excel = "relatorio_diferencas.xlsx"
-    df_resultado.to_excel(resultado_excel, index=False, engine='openpyxl')
-
-    # Botão para baixar o relatório
-    with open(resultado_excel, "rb") as file:
-        st.download_button("📥 Baixar Relatório", data=file, file_name="relatorio_diferencas.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # Botão para download do relatório
+    with open("analise_bancaria.txt", "rb") as file:
+        st.download_button("📥 Baixar Relatório de Análise", data=file, file_name="analise_bancaria.txt", mime="text/plain")
