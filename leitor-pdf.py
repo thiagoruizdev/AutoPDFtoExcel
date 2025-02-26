@@ -25,12 +25,12 @@ def extrair_texto_excel(excel_path):
 # 🔹 Função para a IA analisar os arquivos
 def analisar_com_ia(texto_pdf, texto_excel):
     prompt = f"""
-    Você é um analista bancário. Compare os dados extraídos do PDF com o Excel.
-    
-    Identifique:
-    - ✅ Informações que batem (iguais nos dois documentos)
-    - ❌ Informações divergentes (dados diferentes entre os documentos)
-    - ⚠️ Informações que faltam (estão no Excel, mas não no PDF)
+    Você é um analista bancário. Sua tarefa é comparar um documento PDF extraído de uma carta bancária com os registros oficiais em um arquivo Excel.
+
+    **Regras de Análise:**
+    1️⃣ **✅ Informações que batem** → Quando um dado do PDF é exatamente igual ao do Excel.
+    2️⃣ **❌ Informações divergentes** → Quando há diferenças nos valores entre o PDF e o Excel.
+    3️⃣ **⚠️ Informações faltando** → Quando o Excel tem um dado que não aparece no PDF.
 
     **📄 Dados extraídos do PDF:**
     {texto_pdf}
@@ -38,7 +38,12 @@ def analisar_com_ia(texto_pdf, texto_excel):
     **📊 Dados extraídos do Excel:**
     {texto_excel}
 
-    Gere uma análise detalhada e estruturada.
+    Gere um relatório estruturado com os seguintes pontos:
+    - ✅ **Informações que batem** (listadas corretamente)
+    - ❌ **Informações divergentes** (destacando as diferenças)
+    - ⚠️ **Informações faltando** (o que está no Excel, mas não no PDF)
+    
+    Formate a resposta de maneira clara e organizada.
     """
 
     resposta = modelo_ia(prompt, max_length=500, do_sample=True)
