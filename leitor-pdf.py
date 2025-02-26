@@ -4,8 +4,8 @@ import pdfplumber
 import openpyxl
 from transformers import pipeline
 
-# 🔹 Baixar um modelo open-source da Hugging Face
-modelo_ia = pipeline("text-generation", model="mistralai/Mistral-7B-Instruct-v0.1")
+# Carregar um modelo pequeno para evitar problemas de memória no Streamlit Cloud
+modelo_ia = pipeline("text2text-generation", model="google/flan-t5-small")
 
 # 🔹 Função para extrair texto do PDF
 def extrair_texto_pdf(pdf_path):
