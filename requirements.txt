@@ -1,4 +1,6 @@
-pdfplumber
 pandas
-streamlit
 openpyxl
+pdfplumber
+transformers
+torch
+sentencepiece
