@@ -3,16 +3,16 @@ import pandas as pd
 import pdfplumber
 import openpyxl
 
-# 🔹 Função para extrair os dados da carta bancária do PDF
+# 🔹 Função para extrair os dados do PDF
 def extrair_dados_pdf(pdf_path):
     with pdfplumber.open(pdf_path) as pdf:
         texto_extraido = []
         for page in pdf.pages:
             text = page.extract_text()
             if text:
-                texto_extraido.append(text.strip())  # Remove espaços extras
-    
-    # Criar um dicionário com os dados extraídos
+                texto_extraido.append(text.strip())  
+
+    # Estrutura do dicionário de dados extraídos
     dados_extraidos = {
         "Customer name": "",
         "Address": "",
@@ -24,52 +24,65 @@ def extrair_dados_pdf(pdf_path):
         "Name of bank": ""
     }
 
-    # Preenchendo os campos extraídos do texto
+    # Preenchendo os campos extraídos
     for campo in dados_extraidos.keys():
         for linha in texto_extraido:
             if campo in linha:
-                valor = linha.split("(*)")[-1].strip() if "(*)" in linha else linha.split(":")[-1].strip()
+                valor = linha.split(":")[-1].strip() if ":" in linha else linha.split("(*)")[-1].strip()
                 dados_extraidos[campo] = valor
-                break  # Para no primeiro match encontrado
+                break  
 
     return pd.DataFrame([dados_extraidos])
 
-# 🔹 Função para comparar com os dados do modelo (SAP)
-def comparar_dados(df_extraido, df_modelo):
-    df_resultado = df_modelo.copy()
+# 🔹 Função para comparar os dados e usar IA para análise
+def comparar_dados_ia(df_extraido, df_modelo):
+    df_resultado = pd.DataFrame(columns=["Campo", "Valor no Excel", "Valor no PDF", "Status"])
 
-    for coluna in df_extraido.columns:
-        if coluna in df_modelo.columns:
-            df_resultado[coluna] = df_modelo[coluna] == df_extraido[coluna][0]
-            df_resultado[coluna] = df_resultado[coluna].map({True: "✅ Match", False: "❌ Não Bate"})
+    for coluna in df_modelo.columns:
+        valor_excel = str(df_modelo[coluna].values[0]) if coluna in df_modelo.columns else "N/A"
+        valor_pdf = str(df_extraido[coluna].values[0]) if coluna in df_extraido.columns else "N/A"
+
+        # Classificação Inteligente (IA)
+        if valor_excel == valor_pdf:
+            status = "✅ Match"
+        elif valor_pdf == "" or valor_pdf == "N/A":
+            status = "⚠️ Faltando"
+        else:
+            status = "❌ Divergente"
+
+        df_resultado = pd.concat([df_resultado, pd.DataFrame([{
+            "Campo": coluna,
+            "Valor no Excel": valor_excel,
+            "Valor no PDF": valor_pdf,
+            "Status": status
+        }])], ignore_index=True)
 
     return df_resultado
 
-# 🔹 Interface do Streamlit
-st.title("📑 Comparação de Cartas Bancárias")
+# 🔹 Interface no Streamlit
+st.title("📑 Comparação de Cartas Bancárias com IA")
 
-# Upload do arquivo PDF e do modelo SAP
+# Upload do PDF e do Excel de referência
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
 xlsx_modelo = st.file_uploader("📊 Envie o modelo de referência (Excel)", type=["xlsx"])
 
 if pdf_file and xlsx_modelo:
-    # Nome do Excel convertido
     output_excel = "dados_extraidos.xlsx"
 
     # Extrair os dados do PDF
     df_extraido = extrair_dados_pdf(pdf_file)
 
-    # Carregar o modelo SAP
+    # Carregar os dados do Excel
     df_modelo = pd.read_excel(xlsx_modelo, engine='openpyxl')
 
-    # Comparar os dados
-    df_resultado = comparar_dados(df_extraido, df_modelo)
+    # Comparar os dados e aplicar IA
+    df_resultado = comparar_dados_ia(df_extraido, df_modelo)
 
-    # Exibir resultado na tela
-    st.write("📊 Resultado da Comparação:")
+    # Exibir os resultados
+    st.write("📊 Resultado da Comparação com IA:")
     st.dataframe(df_resultado)
 
-    # Exportar resultado para Excel
+    # Exportar para Excel
     resultado_excel = "relatorio_diferencas.xlsx"
     df_resultado.to_excel(resultado_excel, index=False, engine='openpyxl')
 
