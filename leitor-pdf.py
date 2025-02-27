@@ -3,9 +3,10 @@ import pandas as pd
 import pdfplumber
 import openpyxl
 import google.generativeai as genai
+from datetime import datetime
 
-# 🔹 Configure a chave da API do Google Gemini
-GOOGLE_API_KEY = "AIzaSyDHwa3byfd3rS9DNTlSSPKkcxGkLv2cIMg"
+# 🔹 Configurar a chave da API do Google Gemini
+GOOGLE_API_KEY = "SUA_CHAVE_AQUI"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # 🔹 Função para extrair texto do PDF
@@ -25,8 +26,13 @@ def extrair_texto_excel(excel_path):
 
 # 🔹 Função para analisar os arquivos com Gemini Pro
 def analisar_com_gemini(texto_pdf, texto_excel):
+    data_atual = datetime.now().strftime("%d/%m/%Y")  # 📌 Gera a data atual
+
     prompt = f"""
-    Você é um analista bancário. Sua tarefa é comparar um contrato bancário (PDF) com os registros oficiais em um arquivo Excel.
+    Você é um analista bancário especializado em verificação de dados e detecção de inconsistências.
+    Compare os dados extraídos do contrato bancário (PDF) com os registros oficiais no arquivo Excel.
+
+    **📅 Data da Análise:** {data_atual}
 
     **📄 Dados extraídos do PDF:**
     {texto_pdf}
@@ -34,10 +40,18 @@ def analisar_com_gemini(texto_pdf, texto_excel):
     **📊 Dados extraídos do Excel:**
     {texto_excel}
 
-    Gere um relatório estruturado com:
-    ✅ Informações que batem
-    ❌ Informações divergentes
-    ⚠️ Informações faltando
+    **Regras de Análise:**  
+    1️⃣ **✅ Informações que batem** → Quando um dado do PDF for exatamente igual ao do Excel.  
+    2️⃣ **❌ Informações divergentes** → Quando há diferenças nos valores entre os documentos.  
+    3️⃣ **⚠️ Informações faltando** → Quando o Excel deveria ter um dado, mas não tem.  
+    4️⃣ **🔍 Erros ou suspeitas de fraude** → Caso os dados no PDF pareçam inconsistentes.  
+
+    **IMPORTANTE:**  
+    - Se houver erros ou suspeitas de fraude, destaque no relatório.  
+    - A análise deve ser rigorosa, garantindo máxima precisão.  
+    - Se o Excel estiver com formatação errada, explique como corrigir.  
+
+    Gere um relatório detalhado, claro e organizado. Use **listas**, **marcadores** e **destaques** sempre que possível.
     """
 
     model = genai.GenerativeModel("gemini-1.5-flash")
@@ -61,7 +75,7 @@ if pdf_file and xlsx_modelo:
         resultado_ia = analisar_com_gemini(texto_pdf, texto_excel)
 
         # Melhorando a formatação do texto retornado
-        resultado_formatado = resultado_ia.replace("✅", "\n✅").replace("❌", "\n❌").replace("⚠️", "\n⚠️")
+        resultado_formatado = resultado_ia.replace("✅", "\n✅").replace("❌", "\n❌").replace("⚠️", "\n⚠️").replace("🔍", "\n🔍")
 
         # Exibir resultado de forma organizada
         st.subheader("📊 Análise da IA:")
