@@ -40,7 +40,7 @@ def analisar_com_gemini(texto_pdf, texto_excel):
     ⚠️ Informações faltando
     """
 
-    model = genai.GenerativeModel("gemini-pro")
+    model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(prompt)
     return response.text
 
