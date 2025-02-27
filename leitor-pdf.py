@@ -6,7 +6,7 @@ import google.generativeai as genai
 from datetime import datetime
 
 # 🔹 Configurar a chave da API do Google Gemini
-GOOGLE_API_KEY = "SUA_CHAVE_AQUI"
+GOOGLE_API_KEY = "AIzaSyDHwa3byfd3rS9DNTlSSPKkcxGkLv2cIMg"
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # 🔹 Função para extrair texto do PDF
@@ -24,7 +24,7 @@ def extrair_texto_excel(excel_path):
     df = pd.read_excel(excel_path, engine="openpyxl")
     return df.to_string(index=False)
 
-# 🔹 Função para analisar os arquivos com Gemini Pro
+# 🔹 Função para analisar os arquivos com Gemini
 def analisar_com_gemini(texto_pdf, texto_excel):
     data_atual = datetime.now().strftime("%d/%m/%Y")  # 📌 Gera a data atual
 
@@ -59,7 +59,7 @@ def analisar_com_gemini(texto_pdf, texto_excel):
     return response.text
 
 # 🔹 Interface do Streamlit
-st.title("📑 Comparador de Cartas Bancárias com IA (Gemini Pro)")
+st.title("📑 Comparador de Cartas Bancárias com IA (Gemini)")
 
 # Upload dos arquivos
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
