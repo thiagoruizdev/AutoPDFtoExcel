@@ -2,15 +2,11 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import openpyxl
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+import google.generativeai as genai
 
-# 🔹 Carregar modelo open-source (Mistral-7B)
-modelo = "mistralai/Mistral-7B-Instruct-v0.1"
-tokenizer = AutoTokenizer.from_pretrained(modelo)
-modelo_ia = AutoModelForCausalLM.from_pretrained(modelo)
-
-# 🔹 Criar pipeline de geração de texto
-gerador = pipeline("text-generation", model=modelo_ia, tokenizer=tokenizer)
+# 🔹 Configure a chave da API do Google Gemini
+GOOGLE_API_KEY = "AIzaSyDHwa3byfd3rS9DNTlSSPKkcxGkLv2cIMg"
+genai.configure(api_key=GOOGLE_API_KEY)
 
 # 🔹 Função para extrair texto do PDF
 def extrair_texto_pdf(pdf_path):
@@ -27,8 +23,8 @@ def extrair_texto_excel(excel_path):
     df = pd.read_excel(excel_path, engine="openpyxl")
     return df.to_string(index=False)
 
-# 🔹 Função para analisar os arquivos com IA
-def analisar_com_ia(texto_pdf, texto_excel):
+# 🔹 Função para analisar os arquivos com Gemini Pro
+def analisar_com_gemini(texto_pdf, texto_excel):
     prompt = f"""
     Você é um analista bancário. Sua tarefa é comparar um contrato bancário (PDF) com os registros oficiais em um arquivo Excel.
 
@@ -44,11 +40,12 @@ def analisar_com_ia(texto_pdf, texto_excel):
     ⚠️ Informações faltando
     """
 
-    resposta = gerador(prompt, max_length=1000, do_sample=True)
-    return resposta[0]["generated_text"]
+    model = genai.GenerativeModel("gemini-pro")
+    response = model.generate_content(prompt)
+    return response.text
 
 # 🔹 Interface do Streamlit
-st.title("📑 Comparador de Cartas Bancárias com IA (Mistral)")
+st.title("📑 Comparador de Cartas Bancárias com IA (Gemini Pro)")
 
 # Upload dos arquivos
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
@@ -61,7 +58,7 @@ if pdf_file and xlsx_modelo:
         texto_excel = extrair_texto_excel(xlsx_modelo)
 
         # Chamar a IA para análise
-        resultado_ia = analisar_com_ia(texto_pdf, texto_excel)
+        resultado_ia = analisar_com_gemini(texto_pdf, texto_excel)
 
         # Melhorando a formatação do texto retornado
         resultado_formatado = resultado_ia.replace("✅", "\n✅").replace("❌", "\n❌").replace("⚠️", "\n⚠️")
