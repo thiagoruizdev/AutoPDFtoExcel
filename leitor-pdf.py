@@ -2,10 +2,15 @@ import streamlit as st
 import pandas as pd
 import pdfplumber
 import openpyxl
-from transformers import pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-# 🔹 Carregar um modelo leve para rodar localmente sem precisar de API
-modelo_ia = pipeline("text2text-generation", model="google/flan-t5-small")
+# 🔹 Carregar modelo open-source (Mistral-7B)
+modelo = "mistralai/Mistral-7B-Instruct-v0.1"
+tokenizer = AutoTokenizer.from_pretrained(modelo)
+modelo_ia = AutoModelForCausalLM.from_pretrained(modelo)
+
+# 🔹 Criar pipeline de geração de texto
+gerador = pipeline("text-generation", model=modelo_ia, tokenizer=tokenizer)
 
 # 🔹 Função para extrair texto do PDF
 def extrair_texto_pdf(pdf_path):
@@ -22,15 +27,10 @@ def extrair_texto_excel(excel_path):
     df = pd.read_excel(excel_path, engine="openpyxl")
     return df.to_string(index=False)
 
-# 🔹 Função para a IA analisar os arquivos
+# 🔹 Função para analisar os arquivos com IA
 def analisar_com_ia(texto_pdf, texto_excel):
     prompt = f"""
-    Você é um analista bancário. Sua tarefa é comparar um documento PDF extraído de uma carta bancária com os registros oficiais em um arquivo Excel.
-
-    **Regras de Análise:**
-    1️⃣ **✅ Informações que batem** → Quando um dado do PDF é exatamente igual ao do Excel.
-    2️⃣ **❌ Informações divergentes** → Quando há diferenças nos valores entre o PDF e o Excel.
-    3️⃣ **⚠️ Informações faltando** → Quando o Excel tem um dado que não aparece no PDF.
+    Você é um analista bancário. Sua tarefa é comparar um contrato bancário (PDF) com os registros oficiais em um arquivo Excel.
 
     **📄 Dados extraídos do PDF:**
     {texto_pdf}
@@ -38,25 +38,22 @@ def analisar_com_ia(texto_pdf, texto_excel):
     **📊 Dados extraídos do Excel:**
     {texto_excel}
 
-    Gere um relatório estruturado com os seguintes pontos:
-    - ✅ **Informações que batem** (listadas corretamente)
-    - ❌ **Informações divergentes** (destacando as diferenças)
-    - ⚠️ **Informações faltando** (o que está no Excel, mas não no PDF)
-    
-    Formate a resposta de maneira clara e organizada.
+    Gere um relatório estruturado com:
+    ✅ Informações que batem
+    ❌ Informações divergentes
+    ⚠️ Informações faltando
     """
 
-    resposta = modelo_ia(prompt, max_length=500, do_sample=True)
+    resposta = gerador(prompt, max_length=1000, do_sample=True)
     return resposta[0]["generated_text"]
 
 # 🔹 Interface do Streamlit
-st.title("📑 Comparador de Cartas Bancárias com IA")
+st.title("📑 Comparador de Cartas Bancárias com IA (Mistral)")
 
 # Upload dos arquivos
 pdf_file = st.file_uploader("📄 Envie o PDF da carta bancária", type=["pdf"])
 xlsx_modelo = st.file_uploader("📊 Envie o modelo de referência (Excel)", type=["xlsx"])
 
-# Criar um botão para rodar a IA apenas quando for clicado
 if pdf_file and xlsx_modelo:
     if st.button("🔍 Analisar"):
         # Extrair textos
